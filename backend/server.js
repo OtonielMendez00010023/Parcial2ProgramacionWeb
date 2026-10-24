@@ -102,3 +102,29 @@ app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
 
   res.json(obtenerReserva());
 });
+
+// Endpoint 5: eliminar un plato y devolver unidades al stock
+app.delete("/api/reserva/eliminar/:id", (req, res) => {
+  const alimentoId = Number(req.params.id);
+
+  const indice = reserva.itemsReservados.findIndex((i) => i.id === alimentoId);
+  if (indice === -1) {
+    return res.status(404).json({ mensaje: "El alimento no está en la reserva" });
+  }
+
+  const itemEliminado = reserva.itemsReservados[indice];
+  const alimento = menu.find((a) => a.id === alimentoId);
+
+  if (!alimento) {
+    return res.status(404).json({ mensaje: "Alimento no encontrado" });
+  }
+
+  alimento.stock += itemEliminado.cantidad;
+  reserva.itemsReservados.splice(indice, 1);
+
+  res.json(obtenerReserva());
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+});
