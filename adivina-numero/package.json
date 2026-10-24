@@ -1,0 +1,14 @@
+{
+  "name": "adivina-numero",
+  "version": "1.0.0",
+  "description": "Backend del Ejercicio 1: Adivina el Número",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "type": "module",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.3.0"
+  }
+}
