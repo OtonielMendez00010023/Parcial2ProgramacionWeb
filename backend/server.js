@@ -62,3 +62,43 @@ app.post("/api/reserva/agregar", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
+
+//Endpoint 4: Actualizar porciones
+app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
+  const alimentoId = Number(req.params.id);
+  const { cantidad } = req.body ?? {};
+
+  if (!Number.isInteger(cantidad) || cantidad <= 0) {
+    return res.status(400).json({
+      mensaje: "La cantidad debe ser un número entero mayor a 0"
+    });
+  }
+
+  const alimento = menu.find((a) => a.id === alimentoId);
+  if (!alimento) {
+    return res.status(404).json({ mensaje: "Alimento no encontrado" });
+  }
+
+  const item = reserva.itemsReservados.find((i) => i.id === alimentoId);
+  if (!item) {
+    return res.status(404).json({ mensaje: "El alimento no está en la reserva" });
+  }
+
+  const diferencia = cantidad - item.cantidad;
+
+  if (diferencia > 0 && alimento.stock < diferencia) {
+    return res.status(400).json({ mensaje: "Stock insuficiente" });
+  }
+
+  const nuevoTotal = calcularTotal() + diferencia * alimento.precio;
+  if (nuevoTotal > reserva.saldo) {
+    return res.status(400).json({
+      mensaje: "Saldo insuficiente para esta cantidad"
+    });
+  }
+
+  alimento.stock -= diferencia;
+  item.cantidad = cantidad;
+
+  res.json(obtenerReserva());
+});
