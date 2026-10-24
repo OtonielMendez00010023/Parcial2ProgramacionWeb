@@ -59,10 +59,6 @@ app.post("/api/reserva/agregar", (req, res) => {
   res.status(201).json(obtenerReserva());
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
-
 //Endpoint 4: Actualizar porciones
 app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
   const alimentoId = Number(req.params.id);
