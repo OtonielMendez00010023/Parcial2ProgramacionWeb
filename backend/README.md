@@ -10,7 +10,7 @@ API en Express con el menú y la reserva guardados en memoria.
 
 ## Endpoints
 - `GET /api/menu` lista de platos con precio y stock.
-- `GET /api/reserva` saldo, platos reservados, total, fecha de expiración (`fechaExpiracion`) y estado (`expirada`).
+- `GET /api/reserva` saldo, platos reservados, total, fecha de expiración (`fechaExpiracion`), tiempo restante en milisegundos (`tiempoRestanteMs`) y estado (`expirada`).
 - `POST /api/reserva/agregar` agrega un plato. Body: { "alimentoId": 101, "cantidad": 1 }
 - `PUT /api/reserva/actualizar-porciones/101` actualiza la cantidad de prociones. Body { "cantidad": 3}
 - `DELETE /api/reserva/eliminar/101` elimina el plato reservado segun el Id. 

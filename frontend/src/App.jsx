@@ -18,21 +18,6 @@ import {
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-const DURACION_RESERVA_MS = 15 * 60 * 1000
-const CLAVE_VENCIMIENTO_RESERVA = 'food-dei-reserva-vencimiento'
-
-function obtenerVencimientoGuardado() {
-  const valorGuardado = localStorage.getItem(CLAVE_VENCIMIENTO_RESERVA)
-  if (!valorGuardado) return null
-
-  const vencimiento = Number(valorGuardado)
-  if (!Number.isFinite(vencimiento)) {
-    localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-    return null
-  }
-
-  return vencimiento
-}
 
 function App() {
   const [menu, setMenu] = useState([])
@@ -44,18 +29,10 @@ function App() {
   const [cargando, setCargando] = useState(true)
   const [operacionPendiente, setOperacionPendiente] = useState(null)
   const [error, setError] = useState('')
-  const [fechaVencimiento, setFechaVencimiento] = useState(obtenerVencimientoGuardado)
-  const [reservaExpirada, setReservaExpirada] = useState(() => {
-    const vencimiento = obtenerVencimientoGuardado()
-    return vencimiento !== null && vencimiento <= Date.now()
-  })
-  const intentoExpiracionAutomatico = useRef(false)
-  const [segundosRestantes, setSegundosRestantes] = useState(() => {
-    const vencimiento = obtenerVencimientoGuardado()
-    return vencimiento === null
-      ? 0
-      : Math.max(0, Math.ceil((vencimiento - Date.now()) / 1000))
-  })
+  const [fechaVencimiento, setFechaVencimiento] = useState(null)
+  const [reservaExpirada, setReservaExpirada] = useState(false)
+  const [segundosRestantes, setSegundosRestantes] = useState(0)
+  const expiracionConsultada = useRef(false)
 
   const consultarAPI = useCallback(async (endpoint, options = {}) => {
     const respuesta = await fetch(`${API_URL}${endpoint}`, {
@@ -79,6 +56,8 @@ function App() {
   }, [])
 
   const cargarDatos = useCallback(async () => {
+    setError('')
+
     try {
       const [datosMenu, datosReserva] = await Promise.all([
         consultarAPI('/api/menu'),
@@ -92,22 +71,19 @@ function App() {
       )
 
       setReserva(datosReserva)
-
-      const vencimientoGuardado = obtenerVencimientoGuardado()
-      if (datosReserva.itemsReservados?.length && vencimientoGuardado === null) {
-        const nuevoVencimiento = Date.now() + DURACION_RESERVA_MS
-        localStorage.setItem(CLAVE_VENCIMIENTO_RESERVA, String(nuevoVencimiento))
-        setFechaVencimiento(nuevoVencimiento)
-        setSegundosRestantes(DURACION_RESERVA_MS / 1000)
-      } else if (
-        !datosReserva.itemsReservados?.length &&
-        vencimientoGuardado !== null &&
-        vencimientoGuardado > Date.now()
-      ) {
-        localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-        setFechaVencimiento(null)
-        setSegundosRestantes(0)
-      }
+      const tiempoRestanteMs = Number(datosReserva.tiempoRestanteMs)
+      const expiracionServidor = Date.parse(datosReserva.fechaExpiracion)
+      const restanteMs = datosReserva.fechaExpiracion
+        ? Number.isFinite(tiempoRestanteMs)
+          ? Math.max(0, tiempoRestanteMs)
+          : Number.isFinite(expiracionServidor)
+            ? Math.max(0, expiracionServidor - Date.now())
+            : null
+        : null
+      setFechaVencimiento(
+        restanteMs === null ? null : Date.now() + restanteMs
+      )
+      setReservaExpirada(Boolean(datosReserva.expirada))
     } catch (err) {
       setError(err.message || 'No se pudo conectar con el servidor.')
     } finally {
@@ -122,6 +98,8 @@ function App() {
   useEffect(() => {
     if (fechaVencimiento === null || reservaExpirada) return undefined
 
+    expiracionConsultada.current = false
+
     const actualizarTiempoRestante = () => {
       const segundos = Math.max(
         0,
@@ -129,15 +107,17 @@ function App() {
       )
       setSegundosRestantes(segundos)
 
-      if (segundos === 0) {
-        setReservaExpirada(true)
+      if (segundos === 0 && !expiracionConsultada.current) {
+        expiracionConsultada.current = true
+        cargarDatos()
       }
     }
 
+    actualizarTiempoRestante()
     const intervalo = window.setInterval(actualizarTiempoRestante, 1000)
 
     return () => window.clearInterval(intervalo)
-  }, [fechaVencimiento, reservaExpirada])
+  }, [fechaVencimiento, reservaExpirada, cargarDatos])
 
   async function agregarReserva(alimentoId) {
     if (operacionPendiente) return
@@ -201,69 +181,8 @@ function App() {
     }
   }
 
-  const vaciarReservaVencida = useCallback(async () => {
-    if (operacionPendiente) return
-
-    setOperacionPendiente({ tipo: 'vencimiento' })
-    setError('')
-
-    try {
-      const datosReserva = await consultarAPI('/api/reserva')
-      await Promise.all(
-        (datosReserva.itemsReservados ?? []).map((item) =>
-          consultarAPI(`/api/reserva/eliminar/${item.id}`, {
-            method: 'DELETE',
-          })
-        )
-      )
-
-      const [datosMenu, reservaActualizada] = await Promise.all([
-        consultarAPI('/api/menu'),
-        consultarAPI('/api/reserva'),
-      ])
-
-      setMenu(
-        Array.isArray(datosMenu)
-          ? datosMenu
-          : datosMenu.menu || datosMenu.alimentos || []
-      )
-      setReserva(reservaActualizada)
-    } catch (err) {
-      setError(
-        `La reserva venció, pero no se pudo liberar todo el stock. ${err.message || ''}`.trim()
-      )
-    } finally {
-      setOperacionPendiente(null)
-    }
-  }, [consultarAPI, operacionPendiente])
-
-  useEffect(() => {
-    if (
-      reservaExpirada &&
-      !cargando &&
-      reserva.itemsReservados?.length > 0 &&
-      operacionPendiente === null &&
-      !intentoExpiracionAutomatico.current
-    ) {
-      intentoExpiracionAutomatico.current = true
-      const reintento = window.setTimeout(vaciarReservaVencida, 0)
-      return () => window.clearTimeout(reintento)
-    }
-    return undefined
-  }, [
-    reservaExpirada,
-    cargando,
-    reserva.itemsReservados,
-    operacionPendiente,
-    vaciarReservaVencida,
-  ])
-
   function iniciarNuevaReserva() {
-    localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-    setFechaVencimiento(null)
-    setSegundosRestantes(0)
     setReservaExpirada(false)
-    intentoExpiracionAutomatico.current = false
     setError('')
   }
 
@@ -307,8 +226,22 @@ function App() {
         </Row>
         {fechaVencimiento !== null && !reservaExpirada && hayPlatosReservados && (
           <div className="reserva-temporizador mt-3" role="timer" aria-live="off">
-            <span>Tiempo para completar la reserva</span>
+            <span>
+              {segundosRestantes === 0
+                ? 'Verificando el estado de la reserva'
+                : 'Tiempo para completar la reserva'}
+            </span>
             <strong className="temporizador-valor">{tiempoFormateado}</strong>
+            {segundosRestantes === 0 && (
+              <Button
+                color="light"
+                size="sm"
+                disabled={cargando}
+                onClick={cargarDatos}
+              >
+                {cargando ? <Spinner size="sm" /> : 'Reintentar'}
+              </Button>
+            )}
           </div>
         )}
       </Alert>
@@ -316,33 +249,10 @@ function App() {
       {reservaExpirada && (
         <Alert color="warning" className="aviso-vencimiento">
           <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
-            <span>
-              {hayPlatosReservados
-                ? operacionPendiente?.tipo === 'vencimiento'
-                  ? 'La reserva venció. Liberando el stock...'
-                  : 'La reserva venció. Se liberará el stock de los platos pendientes.'
-                : 'El tiempo de tu reserva terminó.'}
-            </span>
-            {hayPlatosReservados ? (
-              <Button
-                color="warning"
-                outline
-                disabled={hayOperacionPendiente}
-                onClick={vaciarReservaVencida}
-              >
-                {operacionPendiente?.tipo === 'vencimiento' ? (
-                  <>
-                    <Spinner size="sm" /> Liberando...
-                  </>
-                ) : (
-                  'Reintentar liberar reserva'
-                )}
-              </Button>
-            ) : (
-              <Button color="warning" onClick={iniciarNuevaReserva}>
-                Iniciar nueva reserva
-              </Button>
-            )}
+            <span>La reserva venció y el backend liberó el stock.</span>
+            <Button color="warning" onClick={iniciarNuevaReserva}>
+              Iniciar nueva reserva
+            </Button>
           </div>
         </Alert>
       )}

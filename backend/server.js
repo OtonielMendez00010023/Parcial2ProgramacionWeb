@@ -56,6 +56,9 @@ function obtenerReserva() {
     fechaExpiracion: reserva.fechaExpiracion === null
       ? null
       : new Date(reserva.fechaExpiracion).toISOString(),
+    tiempoRestanteMs: reserva.fechaExpiracion === null
+      ? 0
+      : Math.max(0, reserva.fechaExpiracion - Date.now()),
     expirada: reserva.expirada
   };
 }
