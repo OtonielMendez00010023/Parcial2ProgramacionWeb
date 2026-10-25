@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Alert,
-  Badge,
   Button,
   ButtonGroup,
   Card,
@@ -277,42 +276,48 @@ function App() {
 
   return (
     <Container className="food-app py-4">
-      {/* Panel superior */}
-      <Alert color="success" className="panel-superior">
-        <div>
-          <h1 className="h3 mb-1">Food DEI</h1>
-          <p className="mb-3">Tu menú del día</p>
+      <Alert color="success" className="panel-superior mb-4">
+        <div className="marca-food">
+          <span className="marca-icono" aria-hidden="true">F</span>
+          <div>
+            <p className="marca-etiqueta">Food DEI · Comedor</p>
+            <h1 className="marca-titulo">Tu menú del día</h1>
+            <p className="marca-subtitulo">Elige tus platos y arma tu reserva.</p>
+          </div>
         </div>
 
-        <Row className="align-items-center">
+        <Row className="resumen-usuario">
           <Col xs="6">
-            <div>Saldo disponible</div>
-        <h3>
-  ${Math.max(
-    0,
-    Number(reserva.saldo ?? 0) - Number(reserva.total ?? 0)
-  ).toFixed(2)}
-</h3>
+            <div className="resumen-metrica">
+              <span className="resumen-etiqueta">Saldo disponible</span>
+              <strong className="resumen-valor">
+                ${Math.max(
+                  0,
+                  Number(reserva.saldo ?? 0) - Number(reserva.total ?? 0)
+                ).toFixed(2)}
+              </strong>
+            </div>
           </Col>
 
-          <Col xs="6" className="text-end">
-            <div>Total de tu reserva</div>
-            <h3>
-              <Badge color="dark" pill>
+          <Col xs="6">
+            <div className="resumen-metrica resumen-metrica-total">
+              <span className="resumen-etiqueta">Total de tu reserva</span>
+              <strong className="resumen-valor">
                 ${Number(reserva.total ?? 0).toFixed(2)}
-              </Badge>
-            </h3>
+              </strong>
+            </div>
           </Col>
         </Row>
         {fechaVencimiento !== null && !reservaExpirada && hayPlatosReservados && (
           <div className="reserva-temporizador mt-3" role="timer" aria-live="off">
-            Tiempo para completar la reserva: <strong>{tiempoFormateado}</strong>
+            <span>Tiempo para completar la reserva</span>
+            <strong className="temporizador-valor">{tiempoFormateado}</strong>
           </div>
         )}
       </Alert>
 
       {reservaExpirada && (
-        <Alert color="warning">
+        <Alert color="warning" className="aviso-vencimiento">
           <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
             <span>
               {hayPlatosReservados
@@ -350,17 +355,19 @@ function App() {
         <UncontrolledAlert
           key={error}
           color="warning"
+          className="mensaje-error"
         >
           {error}
         </UncontrolledAlert>
       )}
 
-      <Row>
+      <Row className="contenido-principal">
         <Col xs="12" lg="8">
-          <div className="mb-4">
-            <h2 className="h4">Menú del día</h2>
+          <div className="encabezado-menu">
+            <p className="seccion-etiqueta">Hecho para hoy</p>
+            <h2>Explora el menú</h2>
             <p className="text-muted">
-              Selecciona los platos que deseas reservar.
+              Selecciona los platos que quieres disfrutar.
             </p>
           </div>
 
@@ -382,24 +389,19 @@ function App() {
                   <Col xs="12" md="6" key={plato.id}>
                     <Card className="mb-4 plato-card h-100">
                       <CardBody className="d-flex flex-column">
-                        <CardTitle tag="h3" className="h5">
+                        <span className="plato-categoria">{plato.categoria}</span>
+                        <CardTitle tag="h3" className="plato-titulo">
                           {plato.nombre}
                         </CardTitle>
 
-                        <p className="text-muted mb-2">
-                          Categoría: {plato.categoria}
-                        </p>
-
-                        <div className="mb-3">
-                          <Badge color="success">
+                        <div className="plato-detalles">
+                          <strong className="plato-precio">
                             ${Number(plato.precio).toFixed(2)}
-                          </Badge>
+                          </strong>
+                          <span className="plato-stock">
+                            Stock <strong>{plato.stock}</strong>
+                          </span>
                         </div>
-
-                        <p>
-                          Stock disponible:{' '}
-                          <strong>{plato.stock}</strong>
-                        </p>
 
                         <div className="mt-auto">
                           <Button
@@ -432,12 +434,17 @@ function App() {
         <Col xs="12" lg="4">
           <Card className="reserva-card">
             <CardBody>
-              <CardTitle tag="h2" className="h4">
-                Tu reserva
-              </CardTitle>
+              <div className="reserva-encabezado">
+                <CardTitle tag="h2" className="reserva-titulo">
+                  Tu reserva
+                </CardTitle>
+                <span className="reserva-contador">
+                  {reserva.itemsReservados?.length ?? 0}
+                </span>
+              </div>
 
               {reserva.itemsReservados?.length ? (
-                <ListGroup flush>
+                <ListGroup flush className="reserva-lista">
                   {reserva.itemsReservados.map((item) => {
                     const plato = menu.find((alimento) => alimento.id === item.id)
                     const subtotal = plato
@@ -458,8 +465,10 @@ function App() {
                         aria-busy={estaActualizando || estaEliminando}
                       >
                         <div>
-                          <strong>{plato?.nombre ?? `Plato #${item.id}`}</strong>
-                          <div className="text-muted">
+                          <strong className="reserva-item-nombre">
+                            {plato?.nombre ?? `Plato #${item.id}`}
+                          </strong>
+                          <div className="reserva-item-detalle">
                             {estaEliminando ? (
                               <span role="status" aria-live="polite">
                                 <Spinner size="sm" /> Quitando...
@@ -473,7 +482,7 @@ function App() {
                             )}
                           </div>
                         </div>
-                        <div className="d-flex align-items-center gap-2">
+                        <div className="reserva-item-acciones d-flex align-items-center gap-2">
                           <ButtonGroup size="sm" aria-label={`Porciones de ${plato?.nombre ?? `plato ${item.id}`}`}>
                             <Button
                               color="secondary"
@@ -510,7 +519,7 @@ function App() {
                             )}
                           </Button>
                           {subtotal !== null && (
-                            <span className="text-nowrap">
+                            <span className="reserva-item-subtotal text-nowrap">
                               ${subtotal.toFixed(2)}
                             </span>
                           )}
@@ -520,9 +529,11 @@ function App() {
                   })}
                 </ListGroup>
               ) : (
-                <p className="text-muted mb-3">
-                  Aún no has agregado platos a tu reserva.
-                </p>
+                <div className="reserva-vacia">
+                  <span className="reserva-vacia-icono" aria-hidden="true">+</span>
+                  <p>Aún no has agregado platos.</p>
+                  <small>Elige algo del menú para empezar.</small>
+                </div>
               )}
 
               <div className="reserva-total d-flex justify-content-between">
