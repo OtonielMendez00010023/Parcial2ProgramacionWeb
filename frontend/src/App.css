@@ -48,6 +48,16 @@ body {
   border-top: 1px solid #e0e8e2;
 }
 
+.reserva-temporizador {
+  padding-top: 0.75rem;
+  border-top: 1px solid rgb(23 60 44 / 20%);
+  text-align: right;
+}
+
+.reserva-confirmacion {
+  text-align: center;
+}
+
 @media (max-width: 576px) {
   .panel-superior {
     padding: 1rem;
@@ -55,5 +65,9 @@ body {
 
   .reserva-card {
     margin-bottom: 1.5rem;
+  }
+
+  .reserva-temporizador {
+    text-align: left;
   }
 }
