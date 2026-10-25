@@ -115,13 +115,17 @@ function App() {
         restanteMs === null ? null : Date.now() + restanteMs
       )
       setReservaExpirada(Boolean(datosReserva.expirada))
+      const reservaActiva =
+        datosReserva.itemsReservados.length > 0 &&
+        !datosReserva.confirmada &&
+        !datosReserva.expirada
 
-      if (datosReserva.itemsReservados.length > 0 && !tieneDatosTemporizador) {
+      if (reservaActiva && !tieneDatosTemporizador) {
         setError(
           'El backend activo no envía los datos del temporizador. Reinicia el servidor backend para sincronizar la reserva.'
         )
       } else if (
-        datosReserva.itemsReservados.length > 0 &&
+        reservaActiva &&
         restanteMs === null
       ) {
         setError('El backend no devolvió una fecha de vencimiento válida.')
