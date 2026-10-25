@@ -9,6 +9,8 @@ import {
   CardTitle,
   Col,
   Container,
+  ListGroup,
+  ListGroupItem,
   Row,
   Spinner,
   UncontrolledAlert,
@@ -21,6 +23,7 @@ function App() {
   const [menu, setMenu] = useState([])
   const [reserva, setReserva] = useState({
     saldo: 25,
+    itemsReservados: [],
     total: 0,
   })
   const [cargando, setCargando] = useState(true)
@@ -141,76 +144,128 @@ function App() {
         </UncontrolledAlert>
       )}
 
-      {/* Menú del día */}
-      <div className="mb-4">
-        <h2 className="h4">Menú del día</h2>
-        <p className="text-muted">
-          Selecciona los platos que deseas reservar.
-        </p>
-      </div>
+      <Row>
+        <Col xs="12" lg="8">
+          <div className="mb-4">
+            <h2 className="h4">Menú del día</h2>
+            <p className="text-muted">
+              Selecciona los platos que deseas reservar.
+            </p>
+          </div>
 
-      {cargando ? (
-        <div className="text-center py-5">
-          <Spinner color="success" />
-          <p className="mt-2">Cargando menú...</p>
-        </div>
-      ) : menu.length === 0 ? (
-        <Alert color="info">
-          No hay platos disponibles para mostrar.
-        </Alert>
-      ) : (
-        <Row>
-          {menu.map((plato) => {
-            const sinStock = Number(plato.stock) <= 0
+          {cargando ? (
+            <div className="text-center py-5">
+              <Spinner color="success" />
+              <p className="mt-2">Cargando menú...</p>
+            </div>
+          ) : menu.length === 0 ? (
+            <Alert color="info">
+              No hay platos disponibles para mostrar.
+            </Alert>
+          ) : (
+            <Row>
+              {menu.map((plato) => {
+                const sinStock = Number(plato.stock) <= 0
 
-            return (
-              <Col xs="12" md="6" lg="4" key={plato.id}>
-                <Card className="mb-4 plato-card h-100">
-                  <CardBody className="d-flex flex-column">
-                    <CardTitle tag="h3" className="h5">
-                      {plato.nombre}
-                    </CardTitle>
+                return (
+                  <Col xs="12" md="6" key={plato.id}>
+                    <Card className="mb-4 plato-card h-100">
+                      <CardBody className="d-flex flex-column">
+                        <CardTitle tag="h3" className="h5">
+                          {plato.nombre}
+                        </CardTitle>
 
-                    <p className="text-muted mb-2">
-                      Categoría: {plato.categoria}
-                    </p>
+                        <p className="text-muted mb-2">
+                          Categoría: {plato.categoria}
+                        </p>
 
-                    <div className="mb-3">
-                      <Badge color="success">
-                        ${Number(plato.precio).toFixed(2)}
-                      </Badge>
-                    </div>
+                        <div className="mb-3">
+                          <Badge color="success">
+                            ${Number(plato.precio).toFixed(2)}
+                          </Badge>
+                        </div>
 
-                    <p>
-                      Stock disponible:{' '}
-                      <strong>{plato.stock}</strong>
-                    </p>
+                        <p>
+                          Stock disponible:{' '}
+                          <strong>{plato.stock}</strong>
+                        </p>
 
-                    <div className="mt-auto">
-                      <Button
-                        color={sinStock ? 'secondary' : 'success'}
-                        block
-                        disabled={sinStock || agregando !== null}
-                        onClick={() => agregarReserva(plato.id)}
+                        <div className="mt-auto">
+                          <Button
+                            color={sinStock ? 'secondary' : 'success'}
+                            block
+                            disabled={sinStock || agregando !== null}
+                            onClick={() => agregarReserva(plato.id)}
+                          >
+                            {agregando === plato.id ? (
+                              <>
+                                <Spinner size="sm" /> Añadiendo...
+                              </>
+                            ) : sinStock ? (
+                              'Agotado'
+                            ) : (
+                              'Añadir a la Reserva'
+                            )}
+                          </Button>
+                        </div>
+                      </CardBody>
+                    </Card>
+                  </Col>
+                )
+              })}
+            </Row>
+          )}
+        </Col>
+
+        <Col xs="12" lg="4">
+          <Card className="reserva-card">
+            <CardBody>
+              <CardTitle tag="h2" className="h4">
+                Tu reserva
+              </CardTitle>
+
+              {reserva.itemsReservados?.length ? (
+                <ListGroup flush>
+                  {reserva.itemsReservados.map((item) => {
+                    const plato = menu.find((alimento) => alimento.id === item.id)
+                    const subtotal = plato
+                      ? Number(plato.precio) * Number(item.cantidad)
+                      : null
+
+                    return (
+                      <ListGroupItem
+                        key={item.id}
+                        className="px-0 d-flex justify-content-between gap-3"
                       >
-                        {agregando === plato.id ? (
-                          <>
-                            <Spinner size="sm" /> Añadiendo...
-                          </>
-                        ) : sinStock ? (
-                          'Agotado'
-                        ) : (
-                          'Añadir a la Reserva'
+                        <div>
+                          <strong>{plato?.nombre ?? `Plato #${item.id}`}</strong>
+                          <div className="text-muted">
+                            Cantidad: {item.cantidad}
+                          </div>
+                        </div>
+                        {subtotal !== null && (
+                          <span className="text-nowrap">
+                            ${subtotal.toFixed(2)}
+                          </span>
                         )}
-                      </Button>
-                    </div>
-                  </CardBody>
-                </Card>
-              </Col>
-            )
-          })}
-        </Row>
-      )}
+                      </ListGroupItem>
+                    )
+                  })}
+                </ListGroup>
+              ) : (
+                <p className="text-muted mb-3">
+                  Aún no has agregado platos a tu reserva.
+                </p>
+              )}
+
+              <div className="reserva-total d-flex justify-content-between">
+                <strong>Total</strong>
+                <strong>${Number(reserva.total ?? 0).toFixed(2)}</strong>
+              </div>
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   )
 }

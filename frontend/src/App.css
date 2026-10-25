@@ -37,8 +37,23 @@ body {
   padding: 1.25rem;
 }
 
+.reserva-card {
+  border: 1px solid #e0e8e2;
+  border-radius: 12px;
+}
+
+.reserva-total {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e8e2;
+}
+
 @media (max-width: 576px) {
   .panel-superior {
     padding: 1rem;
+  }
+
+  .reserva-card {
+    margin-bottom: 1.5rem;
   }
 }
