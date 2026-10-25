@@ -1,0 +1,44 @@
+
+#root {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background-color: #f4f7f5;
+  color: #24352d;
+  font-family: system-ui, sans-serif;
+}
+
+.food-app {
+  max-width: 1200px;
+}
+
+.panel-superior {
+  padding: 1.5rem;
+  border: none;
+  border-radius: 16px;
+  background-color: #e0f1e5;
+  color: #173c2c;
+}
+
+.plato-card {
+  border: 1px solid #e0e8e2;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgb(0 0 0 / 5%);
+  transition: transform 0.2s ease;
+}
+
+.plato-card:hover {
+  transform: translateY(-3px);
+}
+
+.plato-card .card-body {
+  padding: 1.25rem;
+}
+
+@media (max-width: 576px) {
+  .panel-superior {
+    padding: 1rem;
+  }
+}
