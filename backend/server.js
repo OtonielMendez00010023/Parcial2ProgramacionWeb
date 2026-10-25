@@ -1,18 +1,69 @@
 import express from "express";
 import cors from "cors";
-import { menu, reserva, calcularTotal } from "./data.js";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import {
+  menu,
+  reserva,
+  calcularTotal,
+  iniciarVencimientoReserva,
+  limpiarVencimientoReserva,
+  procesarVencimientoReserva
+} from "./data.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+let temporizadorReserva = null;
+
+function detenerTemporizadorReserva() {
+  if (temporizadorReserva !== null) {
+    clearTimeout(temporizadorReserva);
+    temporizadorReserva = null;
+  }
+}
+
+function programarVencimientoReserva() {
+  detenerTemporizadorReserva();
+
+  if (reserva.fechaExpiracion === null) return;
+
+  const tiempoRestante = Math.max(0, reserva.fechaExpiracion - Date.now());
+  temporizadorReserva = setTimeout(() => {
+    try {
+      procesarVencimientoReserva();
+    } catch (error) {
+      console.error("No se pudo liberar el stock al vencer la reserva:", error);
+    } finally {
+      temporizadorReserva = null;
+    }
+  }, tiempoRestante);
+  temporizadorReserva.unref();
+}
+
+app.use("/api", (req, res, next) => {
+  if (procesarVencimientoReserva()) {
+    detenerTemporizadorReserva();
+  }
+  next();
+});
 
 function obtenerReserva() {
   return {
     saldo: reserva.saldo,
     itemsReservados: reserva.itemsReservados,
-    total: calcularTotal()
+    total: calcularTotal(),
+    fechaExpiracion: reserva.fechaExpiracion === null
+      ? null
+      : new Date(reserva.fechaExpiracion).toISOString(),
+    tiempoRestanteMs: reserva.fechaExpiracion === null
+      ? 0
+      : Math.max(0, reserva.fechaExpiracion - Date.now()),
+    expirada: reserva.expirada,
+    confirmada: reserva.confirmada
   };
 }
 
@@ -28,6 +79,10 @@ app.get("/api/reserva", (req, res) => {
 
 // Endpoint 3: agregar un plato a la reserva
 app.post("/api/reserva/agregar", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const { alimentoId, cantidad } = req.body ?? {};
 
   if (!Number.isInteger(cantidad) || cantidad <= 0) {
@@ -56,11 +111,19 @@ app.post("/api/reserva/agregar", (req, res) => {
     reserva.itemsReservados.push({ id: alimentoId, cantidad });
   }
 
+  if (iniciarVencimientoReserva()) {
+    programarVencimientoReserva();
+  }
+
   res.status(201).json(obtenerReserva());
 });
 
 //Endpoint 4: Actualizar porciones
 app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const alimentoId = Number(req.params.id);
   const { cantidad } = req.body ?? {};
 
@@ -101,6 +164,10 @@ app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
 
 // Endpoint 5: eliminar un plato y devolver unidades al stock
 app.delete("/api/reserva/eliminar/:id", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const alimentoId = Number(req.params.id);
 
   const indice = reserva.itemsReservados.findIndex((i) => i.id === alimentoId);
@@ -118,9 +185,48 @@ app.delete("/api/reserva/eliminar/:id", (req, res) => {
   alimento.stock += itemEliminado.cantidad;
   reserva.itemsReservados.splice(indice, 1);
 
+  if (reserva.itemsReservados.length === 0) {
+    limpiarVencimientoReserva();
+    detenerTemporizadorReserva();
+  }
+
   res.json(obtenerReserva());
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.post("/api/reserva/confirmar", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
+  if (reserva.expirada || reserva.fechaExpiracion === null) {
+    return res.status(409).json({ mensaje: "La reserva venció o no está activa" });
+  }
+
+  if (reserva.itemsReservados.length === 0) {
+    return res.status(400).json({ mensaje: "Agrega al menos un plato antes de confirmar" });
+  }
+
+  const total = calcularTotal();
+  if (total > reserva.saldo) {
+    return res.status(400).json({ mensaje: "Saldo insuficiente para confirmar la reserva" });
+  }
+
+  reserva.saldo = Math.round((reserva.saldo - total) * 100) / 100;
+  reserva.fechaExpiracion = null;
+  reserva.expirada = false;
+  reserva.confirmada = true;
+  detenerTemporizadorReserva();
+
+  res.json(obtenerReserva());
 });
+
+export { app };
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  });
+}

@@ -18,21 +18,6 @@ import {
 import './App.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-const DURACION_RESERVA_MS = 15 * 60 * 1000
-const CLAVE_VENCIMIENTO_RESERVA = 'food-dei-reserva-vencimiento'
-
-function obtenerVencimientoGuardado() {
-  const valorGuardado = localStorage.getItem(CLAVE_VENCIMIENTO_RESERVA)
-  if (!valorGuardado) return null
-
-  const vencimiento = Number(valorGuardado)
-  if (!Number.isFinite(vencimiento)) {
-    localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-    return null
-  }
-
-  return vencimiento
-}
 
 function App() {
   const [menu, setMenu] = useState([])
@@ -40,22 +25,16 @@ function App() {
     saldo: 25,
     itemsReservados: [],
     total: 0,
+    confirmada: false,
   })
   const [cargando, setCargando] = useState(true)
   const [operacionPendiente, setOperacionPendiente] = useState(null)
   const [error, setError] = useState('')
-  const [fechaVencimiento, setFechaVencimiento] = useState(obtenerVencimientoGuardado)
-  const [reservaExpirada, setReservaExpirada] = useState(() => {
-    const vencimiento = obtenerVencimientoGuardado()
-    return vencimiento !== null && vencimiento <= Date.now()
-  })
-  const intentoExpiracionAutomatico = useRef(false)
-  const [segundosRestantes, setSegundosRestantes] = useState(() => {
-    const vencimiento = obtenerVencimientoGuardado()
-    return vencimiento === null
-      ? 0
-      : Math.max(0, Math.ceil((vencimiento - Date.now()) / 1000))
-  })
+  const [fechaVencimiento, setFechaVencimiento] = useState(null)
+  const [reservaExpirada, setReservaExpirada] = useState(false)
+  const [segundosRestantes, setSegundosRestantes] = useState(0)
+  const expiracionConsultada = useRef(false)
+  const operacionEnCurso = useRef(false)
 
   const consultarAPI = useCallback(async (endpoint, options = {}) => {
     const respuesta = await fetch(`${API_URL}${endpoint}`, {
@@ -66,7 +45,18 @@ function App() {
       },
     })
 
-    const datos = await respuesta.json().catch(() => ({}))
+    const textoRespuesta = await respuesta.text()
+    let datos = {}
+
+    if (textoRespuesta) {
+      try {
+        datos = JSON.parse(textoRespuesta)
+      } catch {
+        if (respuesta.ok) {
+          throw new Error('El backend devolvió una respuesta no válida.')
+        }
+      }
+    }
 
     if (!respuesta.ok) {
       throw new Error(
@@ -78,35 +68,67 @@ function App() {
     return datos
   }, [])
 
-  const cargarDatos = useCallback(async () => {
+  const cargarDatos = useCallback(async (mostrarCarga = false) => {
+    if (mostrarCarga) {
+      setCargando(true)
+    }
+    setError('')
+
     try {
       const [datosMenu, datosReserva] = await Promise.all([
         consultarAPI('/api/menu'),
         consultarAPI('/api/reserva'),
       ])
 
-      setMenu(
-        Array.isArray(datosMenu)
-          ? datosMenu
-          : datosMenu.menu || datosMenu.alimentos || []
-      )
-
-      setReserva(datosReserva)
-
-      const vencimientoGuardado = obtenerVencimientoGuardado()
-      if (datosReserva.itemsReservados?.length && vencimientoGuardado === null) {
-        const nuevoVencimiento = Date.now() + DURACION_RESERVA_MS
-        localStorage.setItem(CLAVE_VENCIMIENTO_RESERVA, String(nuevoVencimiento))
-        setFechaVencimiento(nuevoVencimiento)
-        setSegundosRestantes(DURACION_RESERVA_MS / 1000)
-      } else if (
-        !datosReserva.itemsReservados?.length &&
-        vencimientoGuardado !== null &&
-        vencimientoGuardado > Date.now()
+      const menuRecibido = Array.isArray(datosMenu)
+        ? datosMenu
+        : datosMenu && typeof datosMenu === 'object'
+          ? datosMenu.menu || datosMenu.alimentos
+          : null
+      if (!Array.isArray(menuRecibido)) {
+        throw new Error('El backend devolvió el menú con formato no válido.')
+      }
+      if (
+        !datosReserva ||
+        typeof datosReserva !== 'object' ||
+        !Array.isArray(datosReserva.itemsReservados)
       ) {
-        localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-        setFechaVencimiento(null)
-        setSegundosRestantes(0)
+        throw new Error('El backend devolvió una reserva con formato no válido.')
+      }
+
+      setMenu(menuRecibido)
+      setReserva(datosReserva)
+      const tiempoRestanteMs = Number(datosReserva.tiempoRestanteMs)
+      const expiracionServidor = Date.parse(datosReserva.fechaExpiracion)
+      const tieneDatosTemporizador =
+        Object.hasOwn(datosReserva, 'fechaExpiracion') &&
+        Object.hasOwn(datosReserva, 'tiempoRestanteMs') &&
+        Object.hasOwn(datosReserva, 'expirada')
+      const restanteMs = datosReserva.fechaExpiracion
+        ? Number.isFinite(tiempoRestanteMs)
+          ? Math.max(0, tiempoRestanteMs)
+          : Number.isFinite(expiracionServidor)
+            ? Math.max(0, expiracionServidor - Date.now())
+            : null
+        : null
+      setFechaVencimiento(
+        restanteMs === null ? null : Date.now() + restanteMs
+      )
+      setReservaExpirada(Boolean(datosReserva.expirada))
+      const reservaActiva =
+        datosReserva.itemsReservados.length > 0 &&
+        !datosReserva.confirmada &&
+        !datosReserva.expirada
+
+      if (reservaActiva && !tieneDatosTemporizador) {
+        setError(
+          'El backend activo no envía los datos del temporizador. Reinicia el servidor backend para sincronizar la reserva.'
+        )
+      } else if (
+        reservaActiva &&
+        restanteMs === null
+      ) {
+        setError('El backend no devolvió una fecha de vencimiento válida.')
       }
     } catch (err) {
       setError(err.message || 'No se pudo conectar con el servidor.')
@@ -116,11 +138,13 @@ function App() {
   }, [consultarAPI])
 
   useEffect(() => {
-    cargarDatos()
+    cargarDatos(true)
   }, [cargarDatos])
 
   useEffect(() => {
     if (fechaVencimiento === null || reservaExpirada) return undefined
+
+    expiracionConsultada.current = false
 
     const actualizarTiempoRestante = () => {
       const segundos = Math.max(
@@ -129,19 +153,26 @@ function App() {
       )
       setSegundosRestantes(segundos)
 
-      if (segundos === 0) {
-        setReservaExpirada(true)
+      if (segundos === 0 && !expiracionConsultada.current) {
+        expiracionConsultada.current = true
+        cargarDatos()
       }
     }
 
+    actualizarTiempoRestante()
     const intervalo = window.setInterval(actualizarTiempoRestante, 1000)
 
     return () => window.clearInterval(intervalo)
-  }, [fechaVencimiento, reservaExpirada])
+  }, [fechaVencimiento, reservaExpirada, cargarDatos])
 
   async function agregarReserva(alimentoId) {
-    if (operacionPendiente) return
+    if (
+      operacionEnCurso.current ||
+      reservaExpirada ||
+      (fechaVencimiento !== null && segundosRestantes === 0)
+    ) return
 
+    operacionEnCurso.current = true
     setOperacionPendiente({ tipo: 'agregar', alimentoId })
     setError('')
 
@@ -158,13 +189,19 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudo añadir el plato.')
     } finally {
+      operacionEnCurso.current = false
       setOperacionPendiente(null)
     }
   }
 
   async function actualizarPorciones(alimentoId, cantidad) {
-    if (operacionPendiente) return
+    if (
+      operacionEnCurso.current ||
+      reservaExpirada ||
+      (fechaVencimiento !== null && segundosRestantes === 0)
+    ) return
 
+    operacionEnCurso.current = true
     setOperacionPendiente({ tipo: 'actualizar', alimentoId })
     setError('')
 
@@ -178,13 +215,19 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudieron actualizar las porciones.')
     } finally {
+      operacionEnCurso.current = false
       setOperacionPendiente(null)
     }
   }
 
   async function eliminarReserva(alimentoId) {
-    if (operacionPendiente) return
+    if (
+      operacionEnCurso.current ||
+      reservaExpirada ||
+      (fechaVencimiento !== null && segundosRestantes === 0)
+    ) return
 
+    operacionEnCurso.current = true
     setOperacionPendiente({ tipo: 'eliminar', alimentoId })
     setError('')
 
@@ -197,78 +240,44 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudo quitar el plato de la reserva.')
     } finally {
+      operacionEnCurso.current = false
       setOperacionPendiente(null)
     }
   }
 
-  const vaciarReservaVencida = useCallback(async () => {
-    if (operacionPendiente) return
+  async function confirmarReserva() {
+    if (
+      operacionEnCurso.current ||
+      !hayPlatosReservados ||
+      reservaExpirada ||
+      vencimientoEnVerificacion ||
+      reserva.confirmada
+    ) return
 
-    setOperacionPendiente({ tipo: 'vencimiento' })
+    operacionEnCurso.current = true
+    setOperacionPendiente({ tipo: 'confirmar' })
     setError('')
 
     try {
-      const datosReserva = await consultarAPI('/api/reserva')
-      await Promise.all(
-        (datosReserva.itemsReservados ?? []).map((item) =>
-          consultarAPI(`/api/reserva/eliminar/${item.id}`, {
-            method: 'DELETE',
-          })
-        )
-      )
-
-      const [datosMenu, reservaActualizada] = await Promise.all([
-        consultarAPI('/api/menu'),
-        consultarAPI('/api/reserva'),
-      ])
-
-      setMenu(
-        Array.isArray(datosMenu)
-          ? datosMenu
-          : datosMenu.menu || datosMenu.alimentos || []
-      )
-      setReserva(reservaActualizada)
+      await consultarAPI('/api/reserva/confirmar', { method: 'POST' })
+      await cargarDatos()
     } catch (err) {
-      setError(
-        `La reserva venció, pero no se pudo liberar todo el stock. ${err.message || ''}`.trim()
-      )
+      setError(err.message || 'No se pudo confirmar la reserva.')
     } finally {
+      operacionEnCurso.current = false
       setOperacionPendiente(null)
     }
-  }, [consultarAPI, operacionPendiente])
-
-  useEffect(() => {
-    if (
-      reservaExpirada &&
-      !cargando &&
-      reserva.itemsReservados?.length > 0 &&
-      operacionPendiente === null &&
-      !intentoExpiracionAutomatico.current
-    ) {
-      intentoExpiracionAutomatico.current = true
-      const reintento = window.setTimeout(vaciarReservaVencida, 0)
-      return () => window.clearTimeout(reintento)
-    }
-    return undefined
-  }, [
-    reservaExpirada,
-    cargando,
-    reserva.itemsReservados,
-    operacionPendiente,
-    vaciarReservaVencida,
-  ])
+  }
 
   function iniciarNuevaReserva() {
-    localStorage.removeItem(CLAVE_VENCIMIENTO_RESERVA)
-    setFechaVencimiento(null)
-    setSegundosRestantes(0)
     setReservaExpirada(false)
-    intentoExpiracionAutomatico.current = false
     setError('')
   }
 
   const hayOperacionPendiente = operacionPendiente !== null
   const hayPlatosReservados = reserva.itemsReservados?.length > 0
+  const vencimientoEnVerificacion =
+    fechaVencimiento !== null && segundosRestantes === 0 && !reservaExpirada
   const tiempoFormateado = `${String(Math.floor(segundosRestantes / 60)).padStart(2, '0')}:${String(segundosRestantes % 60).padStart(2, '0')}`
 
   return (
@@ -290,7 +299,8 @@ function App() {
               <strong className="resumen-valor">
                 ${Math.max(
                   0,
-                  Number(reserva.saldo ?? 0) - Number(reserva.total ?? 0)
+                  Number(reserva.saldo ?? 0) -
+                    (reserva.confirmada ? 0 : Number(reserva.total ?? 0))
                 ).toFixed(2)}
               </strong>
             </div>
@@ -307,8 +317,22 @@ function App() {
         </Row>
         {fechaVencimiento !== null && !reservaExpirada && hayPlatosReservados && (
           <div className="reserva-temporizador mt-3" role="timer" aria-live="off">
-            <span>Tiempo para completar la reserva</span>
+            <span>
+              {segundosRestantes === 0
+                ? 'Verificando el estado de la reserva'
+                : 'Tiempo para completar la reserva'}
+            </span>
             <strong className="temporizador-valor">{tiempoFormateado}</strong>
+            {segundosRestantes === 0 && (
+              <Button
+                color="light"
+                size="sm"
+                disabled={cargando}
+                onClick={cargarDatos}
+              >
+                {cargando ? <Spinner size="sm" /> : 'Reintentar'}
+              </Button>
+            )}
           </div>
         )}
       </Alert>
@@ -316,33 +340,10 @@ function App() {
       {reservaExpirada && (
         <Alert color="warning" className="aviso-vencimiento">
           <div className="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2">
-            <span>
-              {hayPlatosReservados
-                ? operacionPendiente?.tipo === 'vencimiento'
-                  ? 'La reserva venció. Liberando el stock...'
-                  : 'La reserva venció. Se liberará el stock de los platos pendientes.'
-                : 'El tiempo de tu reserva terminó.'}
-            </span>
-            {hayPlatosReservados ? (
-              <Button
-                color="warning"
-                outline
-                disabled={hayOperacionPendiente}
-                onClick={vaciarReservaVencida}
-              >
-                {operacionPendiente?.tipo === 'vencimiento' ? (
-                  <>
-                    <Spinner size="sm" /> Liberando...
-                  </>
-                ) : (
-                  'Reintentar liberar reserva'
-                )}
-              </Button>
-            ) : (
-              <Button color="warning" onClick={iniciarNuevaReserva}>
-                Iniciar nueva reserva
-              </Button>
-            )}
+            <span>La reserva venció y el backend liberó el stock.</span>
+            <Button color="warning" onClick={iniciarNuevaReserva}>
+              Iniciar nueva reserva
+            </Button>
           </div>
         </Alert>
       )}
@@ -373,8 +374,22 @@ function App() {
               <p className="mt-2">Cargando menú...</p>
             </div>
           ) : menu.length === 0 ? (
-            <Alert color="info">
-              No hay platos disponibles para mostrar.
+            <Alert color={error ? 'warning' : 'info'}>
+              {error
+                ? 'No se pudo cargar el menú desde el servidor.'
+                : 'No hay platos disponibles para mostrar.'}
+              {error && (
+                <div className="mt-3">
+                  <Button
+                    color="warning"
+                    outline
+                    disabled={cargando}
+                    onClick={() => cargarDatos(true)}
+                  >
+                    {cargando ? <Spinner size="sm" /> : 'Reintentar carga'}
+                  </Button>
+                </div>
+              )}
             </Alert>
           ) : (
             <Row>
@@ -403,7 +418,7 @@ function App() {
                           <Button
                             color={sinStock ? 'secondary' : 'success'}
                             block
-                            disabled={sinStock || hayOperacionPendiente || reservaExpirada}
+                            disabled={sinStock || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                             onClick={() => agregarReserva(plato.id)}
                           >
                             {operacionPendiente?.tipo === 'agregar' &&
@@ -484,7 +499,7 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Reducir porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={item.cantidad <= 1 || hayOperacionPendiente || reservaExpirada}
+                              disabled={item.cantidad <= 1 || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                               onClick={() => actualizarPorciones(item.id, item.cantidad - 1)}
                             >
                               −
@@ -493,7 +508,7 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Aumentar porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={sinStock || hayOperacionPendiente || reservaExpirada}
+                              disabled={sinStock || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                               onClick={() => actualizarPorciones(item.id, item.cantidad + 1)}
                             >
                               +
@@ -503,7 +518,7 @@ function App() {
                             color="danger"
                             outline
                             size="sm"
-                            disabled={hayOperacionPendiente || reservaExpirada}
+                            disabled={hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                             onClick={() => eliminarReserva(item.id)}
                           >
                             {estaEliminando ? (
@@ -536,14 +551,26 @@ function App() {
                 <strong>Total</strong>
                 <strong>${Number(reserva.total ?? 0).toFixed(2)}</strong>
               </div>
-              {hayPlatosReservados && !reservaExpirada && (
+              {reserva.confirmada ? (
+                <Alert color="success" className="mt-3 mb-0">
+                  Reserva confirmada correctamente.
+                </Alert>
+              ) : hayPlatosReservados && !reservaExpirada && (
                 <div className="reserva-confirmacion mt-3">
-                  <Button color="success" block disabled>
-                    Confirmar mi reserva (Pendiente de conexion con backend)
+                  <Button
+                    color="success"
+                    block
+                    disabled={hayOperacionPendiente || vencimientoEnVerificacion}
+                    onClick={confirmarReserva}
+                  >
+                    {operacionPendiente?.tipo === 'confirmar' ? (
+                      <>
+                        <Spinner size="sm" /> Confirmando...
+                      </>
+                    ) : (
+                      'Confirmar mi reserva'
+                    )}
                   </Button>
-                  <small className="text-muted d-block mt-2">
-                    La reserva aún no se confirma; falta el endpoint de confirmación.
-                  </small>
                 </div>
               )}
             </CardBody>
