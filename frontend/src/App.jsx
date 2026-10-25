@@ -30,6 +30,7 @@ function App() {
   const [cargando, setCargando] = useState(true)
   const [agregando, setAgregando] = useState(null)
   const [actualizando, setActualizando] = useState(null)
+  const [eliminando, setEliminando] = useState(null)
   const [error, setError] = useState('')
 
   // Solicitar datos al backend
@@ -120,6 +121,23 @@ function App() {
       setError(err.message || 'No se pudieron actualizar las porciones.')
     } finally {
       setActualizando(null)
+    }
+  }
+
+  async function eliminarReserva(alimentoId) {
+    setEliminando(alimentoId)
+    setError('')
+
+    try {
+      await consultarAPI(`/api/reserva/eliminar/${alimentoId}`, {
+        method: 'DELETE',
+      })
+
+      await cargarDatos()
+    } catch (err) {
+      setError(err.message || 'No se pudo quitar el plato de la reserva.')
+    } finally {
+      setEliminando(null)
     }
   }
 
@@ -253,6 +271,8 @@ function App() {
                       : null
                     const sinStock = !plato || Number(plato.stock) <= 0
                     const estaActualizando = actualizando === item.id
+                    const estaEliminando = eliminando === item.id
+                    const hayOperacionPendiente = actualizando !== null || eliminando !== null
 
                     return (
                       <ListGroupItem
@@ -262,7 +282,11 @@ function App() {
                         <div>
                           <strong>{plato?.nombre ?? `Plato #${item.id}`}</strong>
                           <div className="text-muted">
-                            {estaActualizando ? (
+                            {estaEliminando ? (
+                              <span>
+                                <Spinner size="sm" /> Quitando...
+                              </span>
+                            ) : estaActualizando ? (
                               <span>
                                 <Spinner size="sm" /> Actualizando...
                               </span>
@@ -277,7 +301,7 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Reducir porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={item.cantidad <= 1 || estaActualizando || actualizando !== null}
+                              disabled={item.cantidad <= 1 || hayOperacionPendiente}
                               onClick={() => actualizarPorciones(item.id, item.cantidad - 1)}
                             >
                               −
@@ -286,12 +310,27 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Aumentar porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={sinStock || estaActualizando || actualizando !== null}
+                              disabled={sinStock || hayOperacionPendiente}
                               onClick={() => actualizarPorciones(item.id, item.cantidad + 1)}
                             >
                               +
                             </Button>
                           </ButtonGroup>
+                          <Button
+                            color="danger"
+                            outline
+                            size="sm"
+                            disabled={hayOperacionPendiente}
+                            onClick={() => eliminarReserva(item.id)}
+                          >
+                            {estaEliminando ? (
+                              <>
+                                <Spinner size="sm" /> Quitando...
+                              </>
+                            ) : (
+                              'Quitar'
+                            )}
+                          </Button>
                           {subtotal !== null && (
                             <span className="text-nowrap">
                               ${subtotal.toFixed(2)}
