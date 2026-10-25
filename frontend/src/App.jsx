@@ -4,6 +4,7 @@ import {
   Alert,
   Badge,
   Button,
+  ButtonGroup,
   Card,
   CardBody,
   CardTitle,
@@ -28,6 +29,7 @@ function App() {
   })
   const [cargando, setCargando] = useState(true)
   const [agregando, setAgregando] = useState(null)
+  const [actualizando, setActualizando] = useState(null)
   const [error, setError] = useState('')
 
   // Solicitar datos al backend
@@ -100,6 +102,24 @@ function App() {
       setError(err.message || 'No se pudo añadir el plato.')
     } finally {
       setAgregando(null)
+    }
+  }
+
+  async function actualizarPorciones(alimentoId, cantidad) {
+    setActualizando(alimentoId)
+    setError('')
+
+    try {
+      await consultarAPI(`/api/reserva/actualizar-porciones/${alimentoId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ cantidad }),
+      })
+
+      await cargarDatos()
+    } catch (err) {
+      setError(err.message || 'No se pudieron actualizar las porciones.')
+    } finally {
+      setActualizando(null)
     }
   }
 
@@ -231,23 +251,53 @@ function App() {
                     const subtotal = plato
                       ? Number(plato.precio) * Number(item.cantidad)
                       : null
+                    const sinStock = !plato || Number(plato.stock) <= 0
+                    const estaActualizando = actualizando === item.id
 
                     return (
                       <ListGroupItem
                         key={item.id}
-                        className="px-0 d-flex justify-content-between gap-3"
+                        className="px-0 d-flex justify-content-between align-items-center gap-3"
                       >
                         <div>
                           <strong>{plato?.nombre ?? `Plato #${item.id}`}</strong>
                           <div className="text-muted">
-                            Cantidad: {item.cantidad}
+                            {estaActualizando ? (
+                              <span>
+                                <Spinner size="sm" /> Actualizando...
+                              </span>
+                            ) : (
+                              `Cantidad: ${item.cantidad}`
+                            )}
                           </div>
                         </div>
-                        {subtotal !== null && (
-                          <span className="text-nowrap">
-                            ${subtotal.toFixed(2)}
-                          </span>
-                        )}
+                        <div className="d-flex align-items-center gap-2">
+                          <ButtonGroup size="sm" aria-label={`Porciones de ${plato?.nombre ?? `plato ${item.id}`}`}>
+                            <Button
+                              color="secondary"
+                              outline
+                              aria-label={`Reducir porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
+                              disabled={item.cantidad <= 1 || estaActualizando || actualizando !== null}
+                              onClick={() => actualizarPorciones(item.id, item.cantidad - 1)}
+                            >
+                              −
+                            </Button>
+                            <Button
+                              color="secondary"
+                              outline
+                              aria-label={`Aumentar porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
+                              disabled={sinStock || estaActualizando || actualizando !== null}
+                              onClick={() => actualizarPorciones(item.id, item.cantidad + 1)}
+                            >
+                              +
+                            </Button>
+                          </ButtonGroup>
+                          {subtotal !== null && (
+                            <span className="text-nowrap">
+                              ${subtotal.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       </ListGroupItem>
                     )
                   })}
