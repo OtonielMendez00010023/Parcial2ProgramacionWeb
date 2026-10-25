@@ -101,24 +101,40 @@ function NumberGame({ onBack }) {
     <main className="number-game-page">
       <div className="number-game-topbar">
         <button className="game-back-button" onClick={onBack}>
-          ← Cambiar ejercicio
+          <span aria-hidden="true">←</span> Cambiar ejercicio
         </button>
-        <span>Ejercicio 1</span>
+        <span className="game-brand"><span aria-hidden="true">♠</span> SALÓN DE LOS NÚMEROS</span>
       </div>
 
       <section className="number-game-card" aria-labelledby="game-title">
-        <p className="game-eyebrow">Desafío</p>
-        <h1 id="game-title">Adivina el Número</h1>
+        <div className="game-card-heading">
+          <span className="game-chip" aria-hidden="true">?</span>
+          <div>
+            <p className="game-eyebrow">Ejercicio 01 · Reto lógico</p>
+            <h1 id="game-title">Adivina el Número</h1>
+          </div>
+          <span className="game-card-suit" aria-hidden="true">♦</span>
+        </div>
         <p className="game-description">
-          Estoy pensando en un número del 1 al 100. ¿Puedes descubrirlo?
+          La mesa está lista. Encuentra el número secreto entre <strong>1 y 100</strong>.
         </p>
 
-        <div className="game-attempt-counter" aria-live="polite">
-          Intentos <strong>{intentos}</strong>
+        <div className="game-table">
+          <div className="game-table-stats" aria-live="polite">
+            <span className="game-stat-label">Intentos realizados</span>
+            <strong className="game-attempt-counter">{String(intentos).padStart(2, '0')}</strong>
+            <span className="game-stat-note">Sigue las pistas para encontrarlo</span>
+          </div>
+          <div className="game-range" aria-label="Rango del número: 1 a 100">
+            <div className="game-range-line" aria-hidden="true"><span /></div>
+            <div className="game-range-labels" aria-hidden="true">
+              <span>01</span><span>25</span><span>50</span><span>75</span><span>100</span>
+            </div>
+          </div>
         </div>
 
         <form className="game-form" onSubmit={enviarIntento}>
-          <label htmlFor="guess-number">Tu número</label>
+          <label htmlFor="guess-number">Haz tu intento</label>
           <div className="game-input-row">
             <input
               id="guess-number"
@@ -128,12 +144,12 @@ function NumberGame({ onBack }) {
               step="1"
               value={numero}
               onChange={(event) => setNumero(event.target.value)}
-              placeholder="1 - 100"
+              placeholder="Escribe un número"
               disabled={cargando || terminado}
               required
             />
             <button type="submit" disabled={cargando || terminado}>
-              {cargando ? 'Enviando...' : 'Intentar'}
+              {cargando ? 'Consultando...' : 'Probar número'}
             </button>
           </div>
         </form>
