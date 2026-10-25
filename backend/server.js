@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   menu,
   reserva,
@@ -39,6 +41,7 @@ function programarVencimientoReserva() {
       temporizadorReserva = null;
     }
   }, tiempoRestante);
+  temporizadorReserva.unref();
 }
 
 app.use("/api", (req, res, next) => {
@@ -177,6 +180,13 @@ app.delete("/api/reserva/eliminar/:id", (req, res) => {
   res.json(obtenerReserva());
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+export { app };
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+) {
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  });
+}

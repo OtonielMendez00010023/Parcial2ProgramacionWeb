@@ -8,6 +8,9 @@ API en Express con el menú y la reserva guardados en memoria.
 3. Ejecuta `npm start`
 4. El servidor queda en `http://localhost:3000`
 
+## Pruebas
+Desde la carpeta `backend`, ejecuta `npm test` para probar los endpoints, validaciones, stock, saldo y vencimiento de la reserva.
+
 ## Endpoints
 - `GET /api/menu` lista de platos con precio y stock.
 - `GET /api/reserva` saldo, platos reservados, total, fecha de expiración (`fechaExpiracion`), tiempo restante en milisegundos (`tiempoRestanteMs`) y estado (`expirada`).
