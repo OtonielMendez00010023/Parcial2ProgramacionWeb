@@ -11,7 +11,8 @@ export const reserva = {
   saldo: 25.0,
   itemsReservados: [],
   fechaExpiracion: null,
-  expirada: false
+  expirada: false,
+  confirmada: false
 };
 
 export const DURACION_RESERVA_MS = 15 * 60 * 1000;
@@ -31,12 +32,14 @@ export function iniciarVencimientoReserva(ahora = Date.now()) {
 
   reserva.fechaExpiracion = ahora + DURACION_RESERVA_MS;
   reserva.expirada = false;
+  reserva.confirmada = false;
   return true;
 }
 
 export function limpiarVencimientoReserva() {
   reserva.fechaExpiracion = null;
   reserva.expirada = false;
+  reserva.confirmada = false;
 }
 
 export function procesarVencimientoReserva(ahora = Date.now()) {

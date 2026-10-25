@@ -367,19 +367,6 @@ html body {
   text-align: center;
 }
 
-.reserva-confirmacion .btn:disabled {
-  border-color: #dfe7d9;
-  background: #eef3e9;
-  color: #63765f;
-  opacity: 1;
-  cursor: not-allowed;
-}
-
-.reserva-confirmacion small {
-  color: #849087 !important;
-  line-height: 1.5;
-}
-
 .food-app .alert-info {
   border-color: #dbe8ef;
   border-radius: 14px;

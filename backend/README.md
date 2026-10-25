@@ -17,8 +17,11 @@ Desde la carpeta `backend`, ejecuta `npm test` para probar los endpoints, valida
 - `POST /api/reserva/agregar` agrega un plato. Body: { "alimentoId": 101, "cantidad": 1 }
 - `PUT /api/reserva/actualizar-porciones/101` actualiza la cantidad de prociones. Body { "cantidad": 3}
 - `DELETE /api/reserva/eliminar/101` elimina el plato reservado segun el Id. 
+- `POST /api/reserva/confirmar` confirma una reserva activa, descuenta su total del saldo y conserva los platos confirmados como comprobante.
 
 La reserva vence 15 minutos después de agregar el primer plato. Agregar más platos o cambiar porciones no reinicia el tiempo. El backend libera automáticamente el stock cuando vence y expone `expirada: true` en `GET /api/reserva`. Si se quitan manualmente todos los platos antes del vencimiento, se cancela el contador.
+
+Una reserva confirmada ya no vence ni permite cambios, y el backend rechaza nuevas operaciones de carrito para esa reserva.
 
 ## Errores
 Los errores llegan como { "mensaje": "..." }:

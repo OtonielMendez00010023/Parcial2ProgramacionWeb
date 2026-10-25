@@ -29,6 +29,8 @@ test("reservation API supports menu, cart operations, validation, and expiry", a
     reserva.itemsReservados = [];
     reserva.fechaExpiracion = null;
     reserva.expirada = false;
+    reserva.confirmada = false;
+    reserva.saldo = 25;
     for (const item of menu) {
       item.stock = initialStocks.get(item.id);
     }
@@ -45,6 +47,11 @@ test("reservation API supports menu, cart operations, validation, and expiry", a
     assert.equal(initialReservation.body.fechaExpiracion, null);
     assert.equal(initialReservation.body.tiempoRestanteMs, 0);
     assert.equal(initialReservation.body.expirada, false);
+    assert.equal(initialReservation.body.confirmada, false);
+    assert.equal(
+      (await request("/api/reserva/confirmar", "POST")).status,
+      409
+    );
 
     const invalidQuantity = await request("/api/reserva/agregar", "POST", {
       alimentoId: 101,
@@ -142,6 +149,10 @@ test("reservation API supports menu, cart operations, validation, and expiry", a
     assert.equal(expiredReservation.body.tiempoRestanteMs, 0);
     assert.equal(expiredReservation.body.expirada, true);
     assert.equal(
+      (await request("/api/reserva/confirmar", "POST")).status,
+      409
+    );
+    assert.equal(
       (await request("/api/menu")).body.find((item) => item.id === 101).stock,
       initialStocks.get(101)
     );
@@ -160,10 +171,50 @@ test("reservation API supports menu, cart operations, validation, and expiry", a
     assert.equal(clearedReservation.status, 200);
     assert.equal(clearedReservation.body.fechaExpiracion, null);
     assert.equal(clearedReservation.body.expirada, false);
+
+    const reservationToConfirm = await request("/api/reserva/agregar", "POST", {
+      alimentoId: 101,
+      cantidad: 2
+    });
+    assert.equal(reservationToConfirm.status, 201);
+
+    const confirmedReservation = await request("/api/reserva/confirmar", "POST");
+    assert.equal(confirmedReservation.status, 200);
+    assert.equal(confirmedReservation.body.confirmada, true);
+    assert.equal(confirmedReservation.body.saldo, 14);
+    assert.equal(confirmedReservation.body.total, 11);
+    assert.equal(confirmedReservation.body.itemsReservados[0].cantidad, 2);
+    assert.equal(confirmedReservation.body.fechaExpiracion, null);
+
+    const repeatedConfirmation = await request("/api/reserva/confirmar", "POST");
+    assert.equal(repeatedConfirmation.status, 409);
+    assert.equal(
+      (await request("/api/reserva/agregar", "POST", {
+        alimentoId: 102,
+        cantidad: 1
+      })).status,
+      409
+    );
+    assert.equal(
+      (await request("/api/reserva/actualizar-porciones/101", "PUT", {
+        cantidad: 1
+      })).status,
+      409
+    );
+    assert.equal(
+      (await request("/api/reserva/eliminar/101", "DELETE")).status,
+      409
+    );
+    assert.equal(
+      (await request("/api/menu")).body.find((item) => item.id === 101).stock,
+      initialStocks.get(101) - 2
+    );
   } finally {
     reserva.itemsReservados = [];
     reserva.fechaExpiracion = null;
     reserva.expirada = false;
+    reserva.confirmada = false;
+    reserva.saldo = 25;
     for (const item of menu) {
       item.stock = initialStocks.get(item.id);
     }

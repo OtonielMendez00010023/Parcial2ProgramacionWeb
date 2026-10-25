@@ -25,6 +25,7 @@ function App() {
     saldo: 25,
     itemsReservados: [],
     total: 0,
+    confirmada: false,
   })
   const [cargando, setCargando] = useState(true)
   const [operacionPendiente, setOperacionPendiente] = useState(null)
@@ -240,6 +241,30 @@ function App() {
     }
   }
 
+  async function confirmarReserva() {
+    if (
+      operacionEnCurso.current ||
+      !hayPlatosReservados ||
+      reservaExpirada ||
+      vencimientoEnVerificacion ||
+      reserva.confirmada
+    ) return
+
+    operacionEnCurso.current = true
+    setOperacionPendiente({ tipo: 'confirmar' })
+    setError('')
+
+    try {
+      await consultarAPI('/api/reserva/confirmar', { method: 'POST' })
+      await cargarDatos()
+    } catch (err) {
+      setError(err.message || 'No se pudo confirmar la reserva.')
+    } finally {
+      operacionEnCurso.current = false
+      setOperacionPendiente(null)
+    }
+  }
+
   function iniciarNuevaReserva() {
     setReservaExpirada(false)
     setError('')
@@ -270,7 +295,8 @@ function App() {
               <strong className="resumen-valor">
                 ${Math.max(
                   0,
-                  Number(reserva.saldo ?? 0) - Number(reserva.total ?? 0)
+                  Number(reserva.saldo ?? 0) -
+                    (reserva.confirmada ? 0 : Number(reserva.total ?? 0))
                 ).toFixed(2)}
               </strong>
             </div>
@@ -388,7 +414,7 @@ function App() {
                           <Button
                             color={sinStock ? 'secondary' : 'success'}
                             block
-                            disabled={sinStock || hayOperacionPendiente || reservaExpirada || vencimientoEnVerificacion}
+                            disabled={sinStock || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                             onClick={() => agregarReserva(plato.id)}
                           >
                             {operacionPendiente?.tipo === 'agregar' &&
@@ -469,7 +495,7 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Reducir porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={item.cantidad <= 1 || hayOperacionPendiente || reservaExpirada || vencimientoEnVerificacion}
+                              disabled={item.cantidad <= 1 || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                               onClick={() => actualizarPorciones(item.id, item.cantidad - 1)}
                             >
                               −
@@ -478,7 +504,7 @@ function App() {
                               color="secondary"
                               outline
                               aria-label={`Aumentar porciones de ${plato?.nombre ?? `plato ${item.id}`}`}
-                              disabled={sinStock || hayOperacionPendiente || reservaExpirada || vencimientoEnVerificacion}
+                              disabled={sinStock || hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                               onClick={() => actualizarPorciones(item.id, item.cantidad + 1)}
                             >
                               +
@@ -488,7 +514,7 @@ function App() {
                             color="danger"
                             outline
                             size="sm"
-                            disabled={hayOperacionPendiente || reservaExpirada || vencimientoEnVerificacion}
+                            disabled={hayOperacionPendiente || reservaExpirada || reserva.confirmada || vencimientoEnVerificacion}
                             onClick={() => eliminarReserva(item.id)}
                           >
                             {estaEliminando ? (
@@ -521,14 +547,26 @@ function App() {
                 <strong>Total</strong>
                 <strong>${Number(reserva.total ?? 0).toFixed(2)}</strong>
               </div>
-              {hayPlatosReservados && !reservaExpirada && (
+              {reserva.confirmada ? (
+                <Alert color="success" className="mt-3 mb-0">
+                  Reserva confirmada correctamente.
+                </Alert>
+              ) : hayPlatosReservados && !reservaExpirada && (
                 <div className="reserva-confirmacion mt-3">
-                  <Button color="success" block disabled>
-                    Confirmar mi reserva (Pendiente de conexion con backend)
+                  <Button
+                    color="success"
+                    block
+                    disabled={hayOperacionPendiente || vencimientoEnVerificacion}
+                    onClick={confirmarReserva}
+                  >
+                    {operacionPendiente?.tipo === 'confirmar' ? (
+                      <>
+                        <Spinner size="sm" /> Confirmando...
+                      </>
+                    ) : (
+                      'Confirmar mi reserva'
+                    )}
                   </Button>
-                  <small className="text-muted d-block mt-2">
-                    La reserva aún no se confirma; falta el endpoint de confirmación.
-                  </small>
                 </div>
               )}
             </CardBody>

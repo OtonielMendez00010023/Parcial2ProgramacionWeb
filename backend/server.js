@@ -62,7 +62,8 @@ function obtenerReserva() {
     tiempoRestanteMs: reserva.fechaExpiracion === null
       ? 0
       : Math.max(0, reserva.fechaExpiracion - Date.now()),
-    expirada: reserva.expirada
+    expirada: reserva.expirada,
+    confirmada: reserva.confirmada
   };
 }
 
@@ -78,6 +79,10 @@ app.get("/api/reserva", (req, res) => {
 
 // Endpoint 3: agregar un plato a la reserva
 app.post("/api/reserva/agregar", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const { alimentoId, cantidad } = req.body ?? {};
 
   if (!Number.isInteger(cantidad) || cantidad <= 0) {
@@ -115,6 +120,10 @@ app.post("/api/reserva/agregar", (req, res) => {
 
 //Endpoint 4: Actualizar porciones
 app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const alimentoId = Number(req.params.id);
   const { cantidad } = req.body ?? {};
 
@@ -155,6 +164,10 @@ app.put("/api/reserva/actualizar-porciones/:id", (req, res) => {
 
 // Endpoint 5: eliminar un plato y devolver unidades al stock
 app.delete("/api/reserva/eliminar/:id", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
   const alimentoId = Number(req.params.id);
 
   const indice = reserva.itemsReservados.findIndex((i) => i.id === alimentoId);
@@ -176,6 +189,33 @@ app.delete("/api/reserva/eliminar/:id", (req, res) => {
     limpiarVencimientoReserva();
     detenerTemporizadorReserva();
   }
+
+  res.json(obtenerReserva());
+});
+
+app.post("/api/reserva/confirmar", (req, res) => {
+  if (reserva.confirmada) {
+    return res.status(409).json({ mensaje: "La reserva ya fue confirmada" });
+  }
+
+  if (reserva.expirada || reserva.fechaExpiracion === null) {
+    return res.status(409).json({ mensaje: "La reserva venció o no está activa" });
+  }
+
+  if (reserva.itemsReservados.length === 0) {
+    return res.status(400).json({ mensaje: "Agrega al menos un plato antes de confirmar" });
+  }
+
+  const total = calcularTotal();
+  if (total > reserva.saldo) {
+    return res.status(400).json({ mensaje: "Saldo insuficiente para confirmar la reserva" });
+  }
+
+  reserva.saldo = Math.round((reserva.saldo - total) * 100) / 100;
+  reserva.fechaExpiracion = null;
+  reserva.expirada = false;
+  reserva.confirmada = true;
+  detenerTemporizadorReserva();
 
   res.json(obtenerReserva());
 });
