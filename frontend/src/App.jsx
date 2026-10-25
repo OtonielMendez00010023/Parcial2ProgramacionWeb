@@ -57,7 +57,6 @@ function App() {
       : Math.max(0, Math.ceil((vencimiento - Date.now()) / 1000))
   })
 
-  // Solicitar datos al backend
   const consultarAPI = useCallback(async (endpoint, options = {}) => {
     const respuesta = await fetch(`${API_URL}${endpoint}`, {
       ...options,
@@ -79,7 +78,6 @@ function App() {
     return datos
   }, [])
 
-  // Cargar menú y reserva
   const cargarDatos = useCallback(async () => {
     try {
       const [datosMenu, datosReserva] = await Promise.all([
@@ -141,7 +139,6 @@ function App() {
     return () => window.clearInterval(intervalo)
   }, [fechaVencimiento, reservaExpirada])
 
-  // Añadir una porción a la reserva
   async function agregarReserva(alimentoId) {
     if (operacionPendiente) return
 
@@ -350,7 +347,6 @@ function App() {
         </Alert>
       )}
 
-      {/* Mensajes del backend */}
       {error && (
         <UncontrolledAlert
           key={error}
