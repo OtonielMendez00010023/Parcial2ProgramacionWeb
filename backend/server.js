@@ -1,18 +1,62 @@
 import express from "express";
 import cors from "cors";
-import { menu, reserva, calcularTotal } from "./data.js";
+import {
+  menu,
+  reserva,
+  calcularTotal,
+  iniciarVencimientoReserva,
+  limpiarVencimientoReserva,
+  procesarVencimientoReserva
+} from "./data.js";
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+let temporizadorReserva = null;
+
+function detenerTemporizadorReserva() {
+  if (temporizadorReserva !== null) {
+    clearTimeout(temporizadorReserva);
+    temporizadorReserva = null;
+  }
+}
+
+function programarVencimientoReserva() {
+  detenerTemporizadorReserva();
+
+  if (reserva.fechaExpiracion === null) return;
+
+  const tiempoRestante = Math.max(0, reserva.fechaExpiracion - Date.now());
+  temporizadorReserva = setTimeout(() => {
+    try {
+      procesarVencimientoReserva();
+    } catch (error) {
+      console.error("No se pudo liberar el stock al vencer la reserva:", error);
+    } finally {
+      temporizadorReserva = null;
+    }
+  }, tiempoRestante);
+}
+
+app.use("/api", (req, res, next) => {
+  if (procesarVencimientoReserva()) {
+    detenerTemporizadorReserva();
+  }
+  next();
+});
 
 function obtenerReserva() {
   return {
     saldo: reserva.saldo,
     itemsReservados: reserva.itemsReservados,
-    total: calcularTotal()
+    total: calcularTotal(),
+    fechaExpiracion: reserva.fechaExpiracion === null
+      ? null
+      : new Date(reserva.fechaExpiracion).toISOString(),
+    expirada: reserva.expirada
   };
 }
 
@@ -54,6 +98,10 @@ app.post("/api/reserva/agregar", (req, res) => {
     item.cantidad += cantidad;
   } else {
     reserva.itemsReservados.push({ id: alimentoId, cantidad });
+  }
+
+  if (iniciarVencimientoReserva()) {
+    programarVencimientoReserva();
   }
 
   res.status(201).json(obtenerReserva());
@@ -117,6 +165,11 @@ app.delete("/api/reserva/eliminar/:id", (req, res) => {
 
   alimento.stock += itemEliminado.cantidad;
   reserva.itemsReservados.splice(indice, 1);
+
+  if (reserva.itemsReservados.length === 0) {
+    limpiarVencimientoReserva();
+    detenerTemporizadorReserva();
+  }
 
   res.json(obtenerReserva());
 });
