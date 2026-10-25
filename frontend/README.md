@@ -1,6 +1,6 @@
-# Frontend - Food DEI
+# Frontend - Ejercicios de Programación Web
 
-Interfaz web desarrollada con React, Vite y Reactstrap para consultar el menú del día y gestionar la reserva mediante la API de Express.
+Aplicación web desarrollada con React, Vite y Reactstrap. La pantalla inicial permite elegir entre Food DEI y Adivina el Número.
 
 ## Cómo ejecutarlo
 
@@ -8,7 +8,16 @@ Interfaz web desarrollada con React, Vite y Reactstrap para consultar el menú d
 2. Ejecuta `npm install`.
 3. Ejecuta `npm run dev`.
 4. Abre la dirección que muestra Vite, normalmente `http://localhost:5173`.
-5. Asegúrate de que el backend esté ejecutándose en `http://localhost:3000`.
+5. Asegúrate de que los dos backends estén ejecutándose:
+   - Food DEI en `http://localhost:3000`.
+   - Adivina el Número en `http://localhost:4000`.
+
+## Ejercicios incluidos
+
+- Pantalla de inicio para seleccionar un ejercicio y regresar al selector.
+- Food DEI: menú, reserva, temporizador y confirmación conectados al backend de puerto `3000`.
+- Adivina el Número: intentos, pistas, contador, validación y reinicio conectados al backend de puerto `4000`.
+- La URL del backend de Adivina el Número se puede cambiar con `VITE_ADIVINA_API_URL`.
 
 ## Funcionalidades
 
@@ -47,10 +56,10 @@ Ejemplos de mensajes:
 
 ## Ejecución del proyecto completo
 
-Para utilizar la aplicación, deben ejecutarse el backend y el frontend en terminales separadas:
+Para utilizar la aplicación, inicia cada proyecto en una terminal independiente:
 
-1. Backend: `cd backend`, `npm install` y `npm start`.
-2. Frontend: `cd frontend`, `npm install` y `npm run dev`.
+1. Backend de Food DEI: `cd backend`, `npm install` (la primera vez) y `npm start`.
+2. Backend de Adivina el Número: `cd adivina-numero`, `npm install` (la primera vez) y `npm start`.
+3. Frontend: `cd frontend`, `npm install` (la primera vez) y `npm run dev`.
 
-El backend utiliza el puerto `3000` y el frontend utiliza el puerto que indique Vite.
-
+Food DEI utiliza el puerto `3000`, Adivina el Número el puerto `4000` y el frontend el puerto que indique Vite.

@@ -1,0 +1,153 @@
+.number-game-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background:
+    radial-gradient(ellipse at 85% 10%, rgb(208 226 171 / 44%), transparent 34%),
+    #f5f7f2;
+}
+
+.number-game-topbar {
+  display: flex;
+  max-width: 900px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 auto;
+  color: #718078;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.game-back-button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #dce6db;
+  border-radius: 10px;
+  background: #fff;
+  color: #286443;
+  font: inherit;
+  cursor: pointer;
+}
+
+.number-game-card {
+  width: min(100%, 520px);
+  margin: clamp(2rem, 8vh, 5rem) auto;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  border: 1px solid #e2e9df;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgb(34 54 43 / 9%);
+  text-align: center;
+}
+
+.number-game-card h1 {
+  margin: 0;
+  color: #20352c;
+  font-size: clamp(1.8rem, 6vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+}
+
+.game-description {
+  margin: 0.75rem 0 1.5rem;
+  color: #718078;
+}
+
+.game-attempt-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.75rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: #f0f4eb;
+  color: #607555;
+}
+
+.game-attempt-counter strong {
+  color: #286443;
+}
+
+.game-form {
+  text-align: left;
+}
+
+.game-form label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #35483c;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.game-input-row {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.game-input-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #dce6db;
+  border-radius: 10px;
+  color: #20352c;
+}
+
+.game-input-row input:focus {
+  border-color: #619576;
+  outline: 3px solid rgb(97 149 118 / 18%);
+}
+
+.game-input-row button,
+.game-reset-button {
+  flex: 0 0 auto;
+  padding: 0.8rem 1rem;
+  border: 0;
+  border-radius: 10px;
+  background: #236847;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.game-input-row button:disabled,
+.game-reset-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.game-message {
+  margin: 1rem 0 0;
+  padding: 0.85rem;
+  border-radius: 12px;
+  font-weight: 650;
+}
+
+.game-message-error {
+  background: #fff1ef;
+  color: #9b3428;
+}
+
+.game-message-hint {
+  background: #fff8e8;
+  color: #775416;
+}
+
+.game-message-success {
+  background: #edf7ed;
+  color: #286443;
+}
+
+.game-reset-button {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+@media (max-width: 420px) {
+  .number-game-page {
+    padding: 1rem;
+  }
+
+  .game-input-row {
+    flex-direction: column;
+  }
+}
