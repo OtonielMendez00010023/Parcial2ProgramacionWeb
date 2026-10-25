@@ -1,0 +1,288 @@
+.number-game-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: #123b2c;
+  color: #24352b;
+}
+
+.number-game-topbar {
+  display: flex;
+  max-width: 860px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 auto;
+  color: #e5d39d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.game-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  letter-spacing: 0.08em;
+}
+
+.game-brand span {
+  color: #d5b75f;
+  font-size: 1.1rem;
+}
+
+.game-back-button {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #587763;
+  border-radius: 8px;
+  background: transparent;
+  color: #f5f0df;
+  font: inherit;
+  cursor: pointer;
+}
+
+.game-back-button:hover,
+.game-back-button:focus-visible {
+  border-color: #d5b75f;
+  outline: none;
+}
+
+.number-game-card {
+  width: min(100%, 540px);
+  margin: clamp(2rem, 8vh, 4rem) auto;
+  padding: clamp(1.4rem, 5vw, 2.25rem);
+  border: 2px solid #d5b75f;
+  border-radius: 16px;
+  background: #f9f7ef;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 18%);
+  text-align: center;
+}
+
+.game-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.game-chip {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  place-items: center;
+  border: 3px dashed #f5e8c5;
+  border-radius: 50%;
+  background: #a83b3c;
+  color: #fff8e7;
+  font-family: Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.game-eyebrow {
+  margin: 0 0 0.3rem;
+  color: #8a7136;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.number-game-card h1 {
+  margin: 0;
+  color: #20352c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  font-weight: 700;
+}
+
+.game-card-suit {
+  margin-left: auto;
+  color: #a83b3c;
+  font-size: 1.5rem;
+}
+
+.game-description {
+  margin: 1.2rem 0;
+  color: #68766c;
+}
+
+.game-description strong {
+  color: #286443;
+}
+
+.game-table {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid #d8dfd2;
+  border-radius: 12px;
+  background: #edf2e9;
+  text-align: left;
+}
+
+.game-table-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.game-stat-label {
+  color: #526558;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.game-attempt-counter {
+  display: inline-grid;
+  min-width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid #d5b75f;
+  border-radius: 50%;
+  background: #fff;
+  color: #286443;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-stat-note {
+  margin-left: auto;
+  color: #7d887e;
+  font-size: 0.72rem;
+}
+
+.game-range-line {
+  height: 6px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #a83b3c, #d5b75f 50%, #286443);
+}
+
+.game-range-line span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), #edf2e9 calc(25% - 1px) 25%);
+}
+
+.game-range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  color: #68766c;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.game-form {
+  text-align: left;
+}
+
+.game-form label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #35483c;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.game-input-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.game-input-row input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #cbd5c8;
+  border-radius: 8px;
+  background: #fff;
+  color: #20352c;
+}
+
+.game-input-row input:focus {
+  border-color: #568064;
+  outline: 3px solid rgb(86 128 100 / 16%);
+}
+
+.game-input-row button,
+.game-reset-button {
+  flex: 0 0 auto;
+  padding: 0.8rem 1rem;
+  border: 1px solid #b89a4b;
+  border-radius: 8px;
+  background: #d5b75f;
+  color: #24352b;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.game-input-row button:disabled,
+.game-reset-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.game-message {
+  margin: 1rem 0 0;
+  padding: 0.8rem;
+  border-radius: 8px;
+  font-weight: 650;
+}
+
+.game-message-error {
+  background: #fff1ef;
+  color: #9b3428;
+}
+
+.game-message-hint {
+  background: #fff8e8;
+  color: #775416;
+}
+
+.game-message-success {
+  background: #edf7ed;
+  color: #286443;
+}
+
+.game-reset-button {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+@media (max-width: 480px) {
+  .number-game-page {
+    padding: 1rem;
+  }
+
+  .number-game-topbar {
+    font-size: 0.65rem;
+  }
+
+  .game-brand {
+    letter-spacing: 0.04em;
+  }
+
+  .game-back-button {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.72rem;
+  }
+
+  .game-table-stats {
+    flex-wrap: wrap;
+  }
+
+  .game-stat-note {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .game-input-row {
+    flex-direction: column;
+  }
+
+  .game-input-row button {
+    width: 100%;
+  }
+}
