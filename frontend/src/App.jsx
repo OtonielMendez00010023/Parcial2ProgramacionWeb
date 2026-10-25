@@ -28,9 +28,7 @@ function App() {
     total: 0,
   })
   const [cargando, setCargando] = useState(true)
-  const [agregando, setAgregando] = useState(null)
-  const [actualizando, setActualizando] = useState(null)
-  const [eliminando, setEliminando] = useState(null)
+  const [operacionPendiente, setOperacionPendiente] = useState(null)
   const [error, setError] = useState('')
 
   // Solicitar datos al backend
@@ -56,8 +54,10 @@ function App() {
   }
 
   // Cargar menú y reserva
-  async function cargarDatos() {
-    setCargando(true)
+  async function cargarDatos(mostrarCarga = false) {
+    if (mostrarCarga) {
+      setCargando(true)
+    }
     setError('')
 
     try {
@@ -76,17 +76,21 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudo conectar con el servidor.')
     } finally {
-      setCargando(false)
+      if (mostrarCarga) {
+        setCargando(false)
+      }
     }
   }
 
   useEffect(() => {
-    cargarDatos()
+    cargarDatos(true)
   }, [])
 
   // Añadir una porción a la reserva
   async function agregarReserva(alimentoId) {
-    setAgregando(alimentoId)
+    if (operacionPendiente) return
+
+    setOperacionPendiente({ tipo: 'agregar', alimentoId })
     setError('')
 
     try {
@@ -102,12 +106,14 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudo añadir el plato.')
     } finally {
-      setAgregando(null)
+      setOperacionPendiente(null)
     }
   }
 
   async function actualizarPorciones(alimentoId, cantidad) {
-    setActualizando(alimentoId)
+    if (operacionPendiente) return
+
+    setOperacionPendiente({ tipo: 'actualizar', alimentoId })
     setError('')
 
     try {
@@ -120,12 +126,14 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudieron actualizar las porciones.')
     } finally {
-      setActualizando(null)
+      setOperacionPendiente(null)
     }
   }
 
   async function eliminarReserva(alimentoId) {
-    setEliminando(alimentoId)
+    if (operacionPendiente) return
+
+    setOperacionPendiente({ tipo: 'eliminar', alimentoId })
     setError('')
 
     try {
@@ -137,9 +145,11 @@ function App() {
     } catch (err) {
       setError(err.message || 'No se pudo quitar el plato de la reserva.')
     } finally {
-      setEliminando(null)
+      setOperacionPendiente(null)
     }
   }
+
+  const hayOperacionPendiente = operacionPendiente !== null
 
   return (
     <Container className="food-app py-4">
@@ -232,10 +242,11 @@ function App() {
                           <Button
                             color={sinStock ? 'secondary' : 'success'}
                             block
-                            disabled={sinStock || agregando !== null}
+                            disabled={sinStock || hayOperacionPendiente}
                             onClick={() => agregarReserva(plato.id)}
                           >
-                            {agregando === plato.id ? (
+                            {operacionPendiente?.tipo === 'agregar' &&
+                            operacionPendiente.alimentoId === plato.id ? (
                               <>
                                 <Spinner size="sm" /> Añadiendo...
                               </>
@@ -270,24 +281,28 @@ function App() {
                       ? Number(plato.precio) * Number(item.cantidad)
                       : null
                     const sinStock = !plato || Number(plato.stock) <= 0
-                    const estaActualizando = actualizando === item.id
-                    const estaEliminando = eliminando === item.id
-                    const hayOperacionPendiente = actualizando !== null || eliminando !== null
+                    const estaActualizando =
+                      operacionPendiente?.tipo === 'actualizar' &&
+                      operacionPendiente.alimentoId === item.id
+                    const estaEliminando =
+                      operacionPendiente?.tipo === 'eliminar' &&
+                      operacionPendiente.alimentoId === item.id
 
                     return (
                       <ListGroupItem
                         key={item.id}
                         className="px-0 d-flex justify-content-between align-items-center gap-3"
+                        aria-busy={estaActualizando || estaEliminando}
                       >
                         <div>
                           <strong>{plato?.nombre ?? `Plato #${item.id}`}</strong>
                           <div className="text-muted">
                             {estaEliminando ? (
-                              <span>
+                              <span role="status" aria-live="polite">
                                 <Spinner size="sm" /> Quitando...
                               </span>
                             ) : estaActualizando ? (
-                              <span>
+                              <span role="status" aria-live="polite">
                                 <Spinner size="sm" /> Actualizando...
                               </span>
                             ) : (
